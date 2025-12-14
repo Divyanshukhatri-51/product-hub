@@ -6,6 +6,7 @@ const connectDB = require('./config/db');
 dotenv.config();
 
 const app = express();
+const server = require('http').createServer(app);
 
 // Connect to MongoDB
 connectDB();
@@ -18,13 +19,14 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
+app.use('/api/status', (req, res)=> res.send('API is running'));
 
 const PORT = process.env.PORT || 5000;
 
 if(process.env.NODE_ENV !== "production"){
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
 
-module.exports = app;
+module.exports = server;
