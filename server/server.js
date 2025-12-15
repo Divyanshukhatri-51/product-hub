@@ -23,11 +23,20 @@ const corsOptions = {
   origin: function (origin, callback) {
     // allow requests with no origin like mobile apps or curl
     if (!origin) return callback(null, true);
+    // allow explicit whitelist
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
-    } else {
-      return callback(new Error('CORS policy: Origin not allowed'));
     }
+    // allow vercel subdomains (deployed apps)
+    try {
+      if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+    } catch (e) {
+      // ignore
+    }
+    console.warn('CORS blocked origin:', origin);
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -39,6 +48,25 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Fallback header setter: ensure Access-Control headers are returned
+// even if CORS middleware doesn't add them (helps debugging on Vercel)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  try {
+    if (!origin) return next();
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      if (req.method === 'OPTIONS') return res.sendStatus(204);
+    }
+  } catch (e) {
+    // ignore
+  }
+  next();
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
