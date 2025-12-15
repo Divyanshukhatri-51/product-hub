@@ -23,10 +23,13 @@ app.use('/api/status', (req, res)=> res.send('API is running'));
 
 const PORT = process.env.PORT || 5000;
 
-if(process.env.NODE_ENV !== "production"){
+// If running as a Vercel serverless function, export the Express app.
+// Otherwise start the HTTP server for local or non-serverless deployments.
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
+  module.exports = server;
 }
-
-module.exports = server;
